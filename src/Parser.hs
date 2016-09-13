@@ -9,15 +9,15 @@ data ProductTypeParam = Argument String | Generic String deriving(Show)
 data ProductType = ProductType Constructor [ProductTypeParam] deriving(Show)
 
 type VariableName = String
+data Function = Function String Expr deriving(Show) --This represent a top level function, so "id a = a" will be parsed as "Function "id" (Lambda "a" (Var "a"))". 
 
 data Expr = 
       Var VariableName
     | Apply Expr Expr
     | Lambda VariableName Expr
     -- | Literal Int
-    | Function String Expr --This represent a top level function, so "id a = a" will be parsed as "Function "id" (Lambda "a" (Var "a"))". 
-                           --Maybe this should be in another datatype, since Function "a" (Function "b" ...) isn't valid
     deriving (Show)
+
 
 endWithSpace :: Parser a -> Parser a
 endWithSpace parser = do
@@ -33,9 +33,9 @@ parameterParser = endWithSpace $ Argument <$> constructorString <|> Generic <$> 
 
 productTypeParser :: Parser ProductType
 productTypeParser = do
-    constructor <- many alphaNumChar
+    constructor <- some alphaNumChar
     space
-    params <- many parameterParser
+    params <- some parameterParser
     return $ ProductType constructor params
     
     
@@ -45,18 +45,17 @@ createTypeParser = do
     space
     productTypeParser
     
-functionParser :: Parser Expr
+functionParser :: Parser Function
 functionParser = do
-    functionName <- many alphaNumChar
+    functionName <- some alphaNumChar
     space
-    param <- many alphaNumChar
+    param <- some alphaNumChar
     space
     char '='
     space
     expr <- expressionParser
     return $ Function functionName (Lambda param expr)
-    
---parathesis = between (char "(") (char ")")
+
 lambdaParser :: Parser Expr
 lambdaParser = do
     char '\\'
@@ -66,7 +65,18 @@ lambdaParser = do
     space
     expr <- expressionParser
     return $ Lambda param expr
+
+applyParser :: Expr -> Parser Expr
+applyParser expr = do
+    space
+    v <- optional expressionParser
+    case v of
+        Just x -> applyParser $ Apply expr x 
+        Nothing -> return expr
+
+expressionParser :: Parser Expr        
+expressionParser = do 
+    p <- lambdaParser <|> varParser
+    applyParser p
     
-expressionParser = lambdaParser <|> varParser -- <|> literal
-varParser = Var <$> many alphaNumChar
---literal = digitChar 
+varParser = Var <$> some alphaNumChar
