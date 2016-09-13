@@ -45,6 +45,8 @@ createTypeParser = do
     space
     productTypeParser
     
+
+    
 functionParser :: Parser Function
 functionParser = do
     functionName <- some alphaNumChar
@@ -62,12 +64,12 @@ currying []     expr = expr
 lambdaParser :: Parser Expr
 lambdaParser = do
     char '\\'
-    param <- many alphaNumChar
+    param <- some $ endWithSpace $ some alphaNumChar
     space
     string "->"
     space
     expr <- expressionParser
-    return $ Lambda param expr
+    return $ currying param expr
 
 applyParser :: Expr -> Parser Expr
 applyParser expr = do
