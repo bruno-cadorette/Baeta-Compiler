@@ -35,7 +35,7 @@ productTypeParser :: Parser ProductType
 productTypeParser = do
     constructor <- some alphaNumChar
     space
-    params <- some parameterParser
+    params <- many parameterParser
     return $ ProductType constructor params
     
     
@@ -49,13 +49,16 @@ functionParser :: Parser Function
 functionParser = do
     functionName <- some alphaNumChar
     space
-    param <- some alphaNumChar
-    space
+    param <- many $ endWithSpace $ some alphaNumChar
     char '='
     space
     expr <- expressionParser
-    return $ Function functionName (Lambda param expr)
+    return $ Function functionName (currying param expr)
 
+currying :: [String] -> Expr ->  Expr
+currying (x:xs) expr = Lambda x (currying xs expr)
+currying []     expr = expr
+    
 lambdaParser :: Parser Expr
 lambdaParser = do
     char '\\'
@@ -76,7 +79,7 @@ applyParser expr = do
 
 expressionParser :: Parser Expr        
 expressionParser = do 
-    p <- lambdaParser <|> varParser
+    p <- (between (char '(') (char ')') expressionParser) <|> lambdaParser <|> varParser
     applyParser p
     
 varParser = Var <$> some alphaNumChar
