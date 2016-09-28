@@ -45,9 +45,7 @@ productTypeParser = do
 createTypeParser = do
     string "datatype"
     space
-    x <- productTypeParser
-    optional eol
-    return x
+    productTypeParser
     
 functionParser :: Parser (String, Expr)
 functionParser = do
@@ -101,8 +99,8 @@ signatureParser = do
         return x)
     return $ FunctionType functionName params
         
-moduleParser :: Parser [TempModuleParser]
-moduleParser = many $
+moduleParser :: Parser TempModuleParser
+moduleParser =
     (ParseProductType <$> createTypeParser) <|> 
     (TypeAnnotation <$> signatureParser) <|> 
     (ParseFunction <$> functionParser)

@@ -1,0 +1,19 @@
+datatype Foo Bar z
+
+first a b = a
+second a b = b
+
+
+id a = a
+
+succ n = \f -> f n
+
+zero = id
+
+one = succ zero
+
+two = succ one
+
+three = 
+    succ
+        two
