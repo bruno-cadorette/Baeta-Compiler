@@ -2,6 +2,7 @@ module Parser.Base where
     
 import Text.Megaparsec
 import Control.Applicative
+import LambdaCalculus
 import Text.Megaparsec.String
 import Data.Map.Strict as Map (insert, Map, delete, lookup) 
 
@@ -9,15 +10,8 @@ type Constructor = String
 data ProductTypeParam = Argument String | Generic String deriving(Show)
 data ProductType = ProductType Constructor [ProductTypeParam] deriving(Show)
 
-type VariableName = String
 
 data FunctionType = FunctionType String [ProductTypeParam] deriving(Show) 
-data Expr = 
-      Var VariableName
-    | Apply Expr Expr
-    | Lambda VariableName Expr
-    -- | Literal Int
-    deriving (Show)
 
 data TempModuleParser = ParseFunction (String, Expr) | TypeAnnotation FunctionType | ParseProductType ProductType deriving (Show)
 

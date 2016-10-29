@@ -3,6 +3,7 @@ module Parser.Build where
 import Text.Megaparsec
 import Parser.Base
 import Control.Applicative
+import LambdaCalculus
 import Text.Megaparsec.String
 import Data.Map.Strict as Map (insert, Map, delete, lookup, fromList, toList, keys) 
 type TopLevelName = String
