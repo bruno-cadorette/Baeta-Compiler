@@ -1,10 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module TypeInference.TypeVariable (TypeVariable, newTypeVariable, baseVariable) where
+module TypeInference.TypeVariable (TypeVariable(..), newTypeVariable, baseVariable) where
 import Control.Monad.State.Class
+import Text.PrettyPrint.ANSI.Leijen
 
 newtype TypeVariable =  TypeVariable String
     deriving (Show, Eq, Ord)
+    
+instance Pretty TypeVariable where
+    pretty (TypeVariable v) = text v
     
 toEnumImpl 0 = []
 toEnumImpl i = (['a'..'z'] !! rem) : toEnumImpl val

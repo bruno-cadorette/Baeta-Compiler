@@ -9,6 +9,7 @@ import TypeInference.TypeVariable
 import Control.Monad.Trans.Except
 import Control.Monad.State.Lazy
 import GHC.Exts
+import Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 --http://hackage.haskell.org/package/sized-vector-1.4.3.1/docs/Data-Vector-Sized.html
 
 
@@ -17,6 +18,11 @@ data Monotype = TVar TypeVariable
     | TConstant String
     --Arrow pourrait être quelque chose comme TApp [(TConstant "->"), type1, type2]
     | Arrow Monotype Monotype deriving (Show, Eq, Ord)
+    
+instance Pretty Monotype where
+    pretty (TVar t) = pretty t
+    pretty (TConstant t) = text t
+    pretty (Arrow t1 t2) = pretty t1 </> text "->" </> pretty t2
 
 createArrow :: Monotype -> Monotype -> Monotype
 createArrow = Arrow
@@ -25,6 +31,9 @@ createArrow = Arrow
 --a est bound et b est libre (free)
 data Polytype = Polytype [TypeVariable] Monotype deriving (Show)
 
+instance Pretty Polytype where
+    pretty (Polytype alpha t) = text "forall" <+> cat (punctuate comma (fmap pretty alpha)) <+> char '.' <//> pretty t
+
 toPolytype :: Monotype -> Polytype
 toPolytype mono = Polytype [] mono
 
@@ -32,6 +41,12 @@ toPolytype mono = Polytype [] mono
 
 --Map une fonction a un type
 newtype Environment = Environment (Map.Map String Polytype) deriving (Show)
+
+instance Pretty Environment where
+    pretty (Environment env) = vcat $ line <$> Map.toList env
+        where 
+            line (name, t) = brackets (text name <+> text ":=" <+> pretty t)
+
 emptyEnv = Environment mempty
 
 instance IsList Environment where
@@ -41,10 +56,10 @@ instance IsList Environment where
 
 
 findType :: Monad m => String -> Environment -> ExceptT String m Polytype
-findType t (Environment env) = 
+findType t e@(Environment env) = 
     case Map.lookup t env of
         Just x -> return x
-        Nothing -> throwE $ "Cannot find " ++ show t ++ " in the typing environment"
+        Nothing -> throwE $ "Cannot find " ++ show t ++ " in the typing environment " ++ (show $ pretty e)
 --Map des variables 
 newtype Substitutions = Substitutions (Map.Map TypeVariable Monotype) deriving (Show)
 

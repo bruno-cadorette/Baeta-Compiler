@@ -1,14 +1,16 @@
-module Parser where
+module Parser(parseModule) where
 
 import Text.Megaparsec
 import Data.Bifunctor
-import Parser.Base
-import Parser.Build
+import Parser.Base as P
+import Parser.Build as P
+import LambdaCalculus as P
 import Data.List
+
 
 parseModule fileContent = do
     parseResult <- first show $ mapM (parse moduleParser "") $ separateTopLevel fileContent
-    createParseOutput parseResult
+    functions <$> createParseOutput parseResult
     
 fstSpace :: String -> Bool
 fstSpace (' ':_) = True

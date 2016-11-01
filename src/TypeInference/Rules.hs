@@ -41,5 +41,6 @@ infer env (Apply expr1 expr2) = do
 
 infer (Environment env) (Lambda x expr) = do
     beta <- newVariable
-    (s1, t1) <- infer (Environment $ Map.insert x (toPolytype beta) env ) expr
+    let env' = Environment $ Map.insert x (toPolytype beta) env 
+    (s1, t1) <- infer env' expr
     return (s1, createArrow (substitute s1 beta) t1)

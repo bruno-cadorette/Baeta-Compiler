@@ -4,7 +4,6 @@ import Text.Megaparsec
 import Control.Applicative
 import LambdaCalculus
 import Text.Megaparsec.String
-import Data.Map.Strict as Map (insert, Map, delete, lookup) 
 
 type Constructor = String
 data ProductTypeParam = Argument String | Generic String deriving(Show)

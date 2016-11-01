@@ -9,11 +9,14 @@ id a = a
 succ n = \f -> f n
 
 zero = id
+true a b = a
+false a b = b
+pair a b f = f a b
 
-one = succ zero
-
-two = succ one
-
-three = 
-    succ
-        two
+one = succ zero 
+ 
+two = succ one 
+ 
+three =  
+    succ 
+        two 
