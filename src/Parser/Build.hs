@@ -8,7 +8,7 @@ import Text.Megaparsec.String
 import Data.Map.Strict as Map (insert, Map, delete, lookup, fromList, toList, keys) 
 type TopLevelName = String
 type FunctionSignature = [ProductTypeParam]
-data Function = Function (Maybe FunctionSignature) Expr deriving(Show) --This represent a top level function, so "id a = a" will be parsed as "Function "id" (Lambda "a" (Var "a"))". 
+data Function = Function (Maybe FunctionSignature) Expr deriving(Show, Eq) --This represent a top level function, so "id a = a" will be parsed as "Function "id" (Lambda "a" (Var "a"))". 
 
 data ParseOutput = ParseOutput { functions :: [(TopLevelName, Function)], types :: [ProductType]} deriving (Show)
     
@@ -30,7 +30,7 @@ mergeHeaderWithFunction typeMap []
     | otherwise = Left $ "Missing top level function named " ++ show (keys typeMap)
     
 createParseOutput :: [TempModuleParser] -> Either String ParseOutput
-createParseOutput xs = (\funcs -> ParseOutput funcs types) <$> mergeHeaderWithFunction headers functions
+createParseOutput xs = (\funcs -> ParseOutput funcs types) <$> mergeHeaderWithFunction headers (fmap (\(n, e) -> (n, transformToFixPoint n e)) functions)
     where
         (functions, headers, types) = createModule xs
         

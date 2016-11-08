@@ -1,4 +1,4 @@
-module Parser(parseModule) where
+module Parser(parseModule, module P) where
 
 import Text.Megaparsec
 import Data.Bifunctor
@@ -7,7 +7,7 @@ import Parser.Build as P
 import LambdaCalculus as P
 import Data.List
 
-
+parseModule :: String -> Either String [(TopLevelName, Function)]
 parseModule fileContent = do
     parseResult <- first show $ mapM (parse moduleParser "") $ separateTopLevel fileContent
     functions <$> createParseOutput parseResult
@@ -19,8 +19,8 @@ fstSpace _ = False
 --go :: [String] -> [[String]]
 go [] = []
 go (x:xs) = (x ++ concat keep) : go next
-            where 
-                (keep, next) = span fstSpace xs
+    where 
+        (keep, next) = span fstSpace xs
 separateTopLevel = go . filter (not.null) . lines . fmap (\x -> if x == '\t' then ' ' else x)
     
         

@@ -6,8 +6,8 @@ import LambdaCalculus
 import Text.Megaparsec.String
 
 type Constructor = String
-data ProductTypeParam = Argument String | Generic String deriving(Show)
-data ProductType = ProductType Constructor [ProductTypeParam] deriving(Show)
+data ProductTypeParam = Argument String | Generic String deriving(Show, Eq)
+data ProductType = ProductType Constructor [ProductTypeParam] deriving(Show, Eq)
 
 
 data FunctionType = FunctionType String [ProductTypeParam] deriving(Show) 
@@ -22,6 +22,9 @@ endWithSpace parser = do
   
 constructorString :: Parser String
 constructorString = liftA2 (:) upperChar $ many alphaNumChar
+
+functionNameString :: Parser String
+functionNameString = liftA2 (:) lowerChar $ many alphaNumChar
 
 parameterParser :: Parser ProductTypeParam
 parameterParser = Argument <$> constructorString <|> Generic <$> some alphaNumChar 
@@ -40,10 +43,8 @@ createTypeParser = do
     space
     productTypeParser
     
-functionParser :: Parser (String, Expr)
-functionParser = do
-    functionName <- some alphaNumChar
-    space
+functionParser :: String -> Parser (String, Expr)
+functionParser functionName = do
     param <- many $ endWithSpace $ some alphaNumChar
     char '='
     space
@@ -79,21 +80,21 @@ expressionParser = do
     
 varParser = Var <$> some alphaNumChar
 
-signatureParser :: Parser FunctionType
-signatureParser = do
-    functionName <- constructorString
-    space
+signatureParser :: String -> Parser FunctionType
+signatureParser functionName = do
     string "::"
     space
-    params <- many (do 
-        x <- parameterParser
-        space
-        string "->"
-        return x)
+    params <- sepBy1 parameterParser (space >> string "->" >> space)
     return $ FunctionType functionName params
         
+        
+functionOrSignatureParser :: Parser TempModuleParser
+functionOrSignatureParser = do
+    name <- functionNameString
+    space
+    (TypeAnnotation <$> signatureParser name) <|> (ParseFunction <$> functionParser name)
+    
 moduleParser :: Parser TempModuleParser
 moduleParser =
     (ParseProductType <$> createTypeParser) <|> 
-    (TypeAnnotation <$> signatureParser) <|> 
-    (ParseFunction <$> functionParser)
+    functionOrSignatureParser

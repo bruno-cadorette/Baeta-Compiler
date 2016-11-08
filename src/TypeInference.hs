@@ -15,16 +15,12 @@ import Data.Set
 
 runInference e =  runIdentity $ evalStateT (runExceptT e ) baseVariable
     
-identityFunc = Lambda "x" (Var "y")
-inferModule :: [(String, Function)] -> Either String Environment
-inferModule xs = runInference $ inferModuleInner xs emptyEnv
-        
-inferModuleInner :: [(String, Function)] -> Environment -> Inference Environment
-inferModuleInner [] env = return env
-inferModuleInner ((name, (Function sign expr)):xs) env = do
+inferModule :: Environment -> [(String, Function)] -> Inference Environment
+inferModule env []  = return env
+inferModule env ((name, (Function sign expr)):xs) = do
         (s, t) <- infer env expr
         t' <- specifyUserSignature sign t
-        inferModuleInner xs (addMonotypeToEnv name t' env)
+        inferModule (addMonotypeToEnv name t' env) xs 
 
 addMonotypeToEnv :: String -> Monotype -> Environment -> Environment
 addMonotypeToEnv name t e@(Environment env) = Environment $ Map.insert name (generalize e t) env

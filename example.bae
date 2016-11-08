@@ -3,7 +3,7 @@ datatype Foo Bar z
 first a b = a
 second a b = b
 
-
+id :: a -> a
 id a = a
 
 succ n = \f -> f n
@@ -20,3 +20,5 @@ two = succ one
 three =  
     succ 
         two 
+        
+fix f = f (fix f)

@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module TypeInference.Base where 
 
 import qualified Data.Map.Strict as Map
@@ -40,7 +41,7 @@ toPolytype mono = Polytype [] mono
 
 
 --Map une fonction a un type
-newtype Environment = Environment (Map.Map String Polytype) deriving (Show)
+newtype Environment = Environment (Map.Map String Polytype) deriving (Show, Monoid)
 
 instance Pretty Environment where
     pretty (Environment env) = vcat $ line <$> Map.toList env
@@ -119,15 +120,16 @@ unify (Arrow l r) (Arrow l' r') = do
     subs1 <- unify l l'
     subs2 <- unifyWithSubstitutions subs1 r r'
     return (subs1 <> subs2)
-unify (TVar a) b = return $ unifyTypeVar a b
-unify b (TVar a) = return $ unifyTypeVar a b
+unify (TVar a) b = unifyTypeVar a b
+unify b (TVar a) = unifyTypeVar a b
 
 unify (TConstant a) (TConstant b)
     |a == b = return mempty
     
 unify a b = throwE $ "Monotype error on unifying type " ++ (show a) ++ " and type " ++ (show b) 
 
-unifyTypeVar :: TypeVariable -> Monotype -> Substitutions
-unifyTypeVar a (TVar b)
-    |a == b = mempty
-unifyTypeVar a b = Substitutions (Map.singleton a b)
+unifyTypeVar :: Monad m =>  TypeVariable -> Monotype -> ExceptT String m  Substitutions
+unifyTypeVar a t@(TVar b)
+    |a == b = return mempty
+    |Set.member a $ freeVariables t = throwE $ "Infinite type " ++ show a
+unifyTypeVar a b = return $ Substitutions (Map.singleton a b)
