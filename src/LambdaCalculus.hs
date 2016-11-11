@@ -11,26 +11,13 @@ data Expr =
     | Fix Expr
     deriving (Show, Eq, Ord)
     
+exprInt = Constant . LInt
+    
 data Literal = LInt Integer | LString String | Unit deriving (Show, Eq, Ord)
 
 data BuiltInFunction = Add | Sub | Mul | Div deriving (Show, Eq, Ord)
 
-data Pattern = 
-      PConstant Literal
-    | PVar VariableName
-    | Constructor [Pattern]
-    {-
---Notre but, l'expr original est turing complete, mais manque pas mal de fonctionnalités
-data Expr' = 
-      Var VariableName
-    | Apply Expr Expr
-    | Lambda VariableName Expr'
-    | Constant Literal
-    | Let Pattern Expr' Expr'
-    | Letrec [(Pattern, Expr')] Expr'
-    | Case VariableName [(Pattern, Expr')] 
-    deriving (Show, Eq, Ord)-}
-
+    
 type VariableName = String
 instance Pretty Expr where
     pretty (Var var) = text var

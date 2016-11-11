@@ -1,4 +1,4 @@
-module TypeInference(inferModule)  where
+module TypeInference(inferModule, getType, module T, runInference)  where
 import TypeInference.Base as T
 import TypeInference.Rules as T
 import TypeInference.TypeVariable as T
@@ -15,6 +15,8 @@ import Data.Set
 
 runInference e =  runIdentity $ evalStateT (runExceptT e ) baseVariable
     
+getType expr = snd <$> runInference (infer mempty expr)
+
 inferModule :: Environment -> [(String, Function)] -> Inference Environment
 inferModule env []  = return env
 inferModule env ((name, (Function sign expr)):xs) = do
