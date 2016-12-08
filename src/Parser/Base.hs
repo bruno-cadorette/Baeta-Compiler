@@ -12,7 +12,7 @@ data ProductType = ProductType Constructor [ProductTypeParam] deriving(Show, Eq)
 
 data FunctionType = FunctionType String [ProductTypeParam] deriving(Show) 
 
-data TempModuleParser = ParseFunction (String, Expr) | TypeAnnotation FunctionType | ParseProductType ProductType deriving (Show)
+data TempModuleParser = ParseFunction (String, NonTypedExpr) | TypeAnnotation FunctionType | ParseProductType ProductType deriving (Show)
 
 endWithSpace :: Parser a -> Parser a
 endWithSpace parser = do
@@ -43,7 +43,7 @@ createTypeParser = do
     space
     productTypeParser
     
-functionParser :: String -> Parser (String, Expr)
+functionParser :: String -> Parser (String, NonTypedExpr)
 functionParser functionName = do
     param <- many $ endWithSpace $ some alphaNumChar
     char '='
@@ -51,11 +51,11 @@ functionParser functionName = do
     expr <- expressionParser
     return $ (functionName, (currying param expr))
 
-currying :: [String] -> Expr ->  Expr
-currying (x:xs) expr = Lambda x (currying xs expr)
+currying :: [String] -> NonTypedExpr ->  NonTypedExpr
+currying (x:xs) expr = Lambda (nonTypedVar x) (currying xs expr)
 currying []     expr = expr
     
-lambdaParser :: Parser Expr
+lambdaParser :: Parser NonTypedExpr
 lambdaParser = do
     char '\\'
     param <- some $ endWithSpace $ some alphaNumChar
@@ -65,7 +65,7 @@ lambdaParser = do
     expr <- expressionParser
     return $ currying param expr
 
-applyParser :: Expr -> Parser Expr
+applyParser :: NonTypedExpr -> Parser NonTypedExpr
 applyParser expr = do
     space
     v <- optional expressionParser
@@ -73,12 +73,12 @@ applyParser expr = do
         Just x -> applyParser $ Apply expr x 
         Nothing -> return expr
 
-expressionParser :: Parser Expr        
+expressionParser :: Parser NonTypedExpr        
 expressionParser = do 
     p <- (between (char '(') (char ')') expressionParser) <|> lambdaParser <|> varParser
     applyParser p
     
-varParser = Var <$> some alphaNumChar
+varParser = Var . nonTypedVar <$> some alphaNumChar
 
 signatureParser :: String -> Parser FunctionType
 signatureParser functionName = do

@@ -13,6 +13,7 @@ import GHC.Exts
 import Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 --http://hackage.haskell.org/package/sized-vector-1.4.3.1/docs/Data-Vector-Sized.html
 
+type Inference m a = StateT TypeVariable (ExceptT String m) a
 
 --TODO Ajouter TApp [(Int, Monotype)] ou bien TApp Monotype [Monotype], où le Int est le nombre de parametres. 
 data Monotype = TVar TypeVariable
@@ -24,9 +25,16 @@ instance Pretty Monotype where
     pretty (TVar t) = pretty t
     pretty (TConstant t) = text t
     pretty (Arrow t1 t2) = pretty t1 </> text "->" </> pretty t2
+    
+--getLambdaValue x expr = createArrow (getValue x) (getExprValue expr)
+    
 
 createArrow :: Monotype -> Monotype -> Monotype
 createArrow = Arrow
+
+getArrow :: Monotype -> Maybe (Monotype, Monotype)
+getArrow (Arrow a b) = Just (a, b)
+getArrow _ = Nothing
     
 --forall a => a -> Int == Polytype ['a'] (Arrow (TVar "a") (TVar "b"))
 --a est bound et b est libre (free)
@@ -56,11 +64,11 @@ instance IsList Environment where
   toList (Environment env)  = Map.toList env
 
 
-findType :: Monad m => String -> Environment -> ExceptT String m Polytype
+findType :: Monad m => String -> Environment -> Inference m Polytype
 findType t e@(Environment env) = 
     case Map.lookup t env of
         Just x -> return x
-        Nothing -> throwE $ "Cannot find " ++ show t ++ " in the typing environment " ++ (show $ pretty e)
+        Nothing -> lift $ throwE $ "Cannot find " ++ show t ++ " in the typing environment " ++ (show $ pretty e)
 --Map des variables 
 newtype Substitutions = Substitutions (Map.Map TypeVariable Monotype) deriving (Show)
 
@@ -112,10 +120,10 @@ instance Subtitute Environment where
 
 
 
-unifyWithSubstitutions :: Monad m => Substitutions -> Monotype -> Monotype -> ExceptT String m Substitutions
+unifyWithSubstitutions :: Monad m => Substitutions -> Monotype -> Monotype -> Inference m Substitutions
 unifyWithSubstitutions subs = unify `on` (substitute subs)
 
-unify :: Monad m => Monotype -> Monotype -> ExceptT String m Substitutions
+unify :: Monad m => Monotype -> Monotype -> Inference m Substitutions
 unify (Arrow l r) (Arrow l' r') = do
     subs1 <- unify l l'
     subs2 <- unifyWithSubstitutions subs1 r r'
@@ -126,10 +134,10 @@ unify b (TVar a) = unifyTypeVar a b
 unify (TConstant a) (TConstant b)
     |a == b = return mempty
     
-unify a b = throwE $ "Monotype error on unifying type " ++ (show a) ++ " and type " ++ (show b) 
+unify a b = lift $ throwE $ "Monotype error on unifying type " ++ (show a) ++ " and type " ++ (show b) 
 
-unifyTypeVar :: Monad m =>  TypeVariable -> Monotype -> ExceptT String m  Substitutions
+unifyTypeVar :: Monad m => TypeVariable -> Monotype -> Inference m Substitutions
 unifyTypeVar a t@(TVar b)
-    |a == b = return mempty
-    |Set.member a $ freeVariables t = throwE $ "Infinite type " ++ show a
+   |Set.member a $ freeVariables t = lift $ throwE $ "Infinite type " ++ show a 
+   |a == b = return mempty
 unifyTypeVar a b = return $ Substitutions (Map.singleton a b)

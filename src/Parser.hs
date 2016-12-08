@@ -6,11 +6,14 @@ import Parser.Base as P
 import Parser.Build as P
 import LambdaCalculus as P
 import Data.List
+import ModuleSystem
+import Control.Monad.Trans.Except
 
-parseModule :: String -> Either String [(TopLevelName, Function)]
-parseModule fileContent = do
-    parseResult <- first show $ mapM (parse moduleParser "") $ separateTopLevel fileContent
-    functions <$> createParseOutput parseResult
+parseModule :: Monad m => String -> String -> ExceptT String m (ParsedModule [(TopLevelName, Function)])
+parseModule fileContent fileName = ExceptT $ pure $ do
+    parseResult <- first show $ mapM (parse moduleParser fileName) $ separateTopLevel fileContent
+    f <- functions <$> createParseOutput parseResult
+    return $ ParsedModule fileName [] f
     
 fstSpace :: String -> Bool
 fstSpace (' ':_) = True
