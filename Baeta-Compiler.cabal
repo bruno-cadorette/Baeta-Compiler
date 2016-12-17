@@ -1,16 +1,16 @@
 name:                Baeta-Compiler
 version:             0.1.0.0
-synopsis:            Initial project template from stack
-description:         Please see README.md
+synopsis:            Projet pour automne 2016
+description:         Compilateur pour un langage fonctionnel typé
 homepage:            https://github.com/bruno-cadorette/Baeta-Compiler#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2016 Author name here
+author:              Bruno Cadorette
+maintainer:          Bruno.Cadorette@usherbrooke.ca
+copyright:           2016 Bruno Cadorette
 category:            Compiler
 build-type:          Simple
--- extra-source-files:
+-- | extra-source-files:
 cabal-version:       >=1.10
 
 library
@@ -23,7 +23,14 @@ library
                        LambdaCalculus, 
                        Parser, 
                        TypeInference,
-                       ModuleSystem
+                       ModuleSystem,
+                       Closure,
+                       STDLib,
+                       ExceptionHandling,
+                       Interpreter,
+                       Compile
+                       
+                       
                     
   build-depends:       base >= 4.7 && < 5,
                        megaparsec,
@@ -32,8 +39,7 @@ library
                        transformers,
                        ansi-wl-pprint,
                        directory-tree,
-                       monad-logger,
-                       llvm-general-pure
+                       monad-logger
                        
   default-language:    Haskell2010
 
@@ -44,6 +50,7 @@ executable Baeta-Compiler-exe
   build-depends:       base
                      , Baeta-Compiler
                      , ansi-wl-pprint
+                     , transformers
   default-language:    Haskell2010
 
 test-suite Baeta-Compiler-test
@@ -53,6 +60,8 @@ test-suite Baeta-Compiler-test
   build-depends:       base
                      , Baeta-Compiler
                      , hspec
+                     , transformers
+                     , QuickCheck
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 

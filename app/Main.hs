@@ -1,24 +1,21 @@
 module Main where
 
-import Parser
-import Closure
-import TypeInference
-import ModuleSystem
-import ExceptionHandling
+import Compile
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+import System.Environment
+
+
+-- getProgramType str = getType =<< (debugParse str)
 
 
 
-compile content fileName = do 
-    parseResult <- mapError $ parseModule content fileName
-    m <- mapError $ createValidGraph [parseResult]
-    runInference $ inferModule m
-    
+printResult (Left err) = print err
+printResult (Right r) = print $ pretty r
     
     
 main :: IO ()
 main = do
-    result <- compile <$> readFile "./example.bae"
-    print ()
-    
-    
+    files <- getArgs
+    contents <- mapM readFile files
+    result <- compile $ zip files contents
+    printResult result

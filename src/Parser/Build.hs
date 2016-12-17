@@ -1,16 +1,17 @@
+-- |Ce module analyse le résultat du parsing et le transforme en structure de donné plus facile a utilisé
+
 module Parser.Build where
 
-import Text.Megaparsec
 import Parser.Base
-import Control.Applicative
+import Data.Maybe
 import LambdaCalculus
-import Text.Megaparsec.String
-import Data.Map.Strict as Map (insert, Map, delete, lookup, fromList, toList, keys) 
+import Data.Map.Strict as Map (insert, Map, delete, lookup, keys) 
 type TopLevelName = String
 type FunctionSignature = [ProductTypeParam]
-data Function = Function (Maybe FunctionSignature) NonTypedExpr deriving(Show, Eq) --This represent a top level function, so "id a = a" will be parsed as "Function "id" (Lambda "a" (Var "a"))". 
-
-data ParseOutput = ParseOutput { functions :: [(TopLevelName, Function)], types :: [ProductType]} deriving (Show)
+-- |Représente une fonction avec sa signature 
+data Function = Function (Maybe FunctionSignature) NonTypedExpr deriving(Show, Eq) 
+-- |Structure de donnée pour travailler avec le résultat du parsing
+data ParseOutput = ParseOutput { functions :: [Named Function], types :: [ProductType], imports :: [String]} deriving (Show)
     
 createModule :: [TempModuleParser] -> ([(TopLevelName, NonTypedExpr)], Map String FunctionSignature, [ProductType])
 createModule = foldr buildModule mempty
@@ -19,22 +20,26 @@ createModule = foldr buildModule mempty
         buildModule (TypeAnnotation (FunctionType functionName params)) = snd3 (insert functionName params)
         buildModule (ParseProductType newType) = trd3 (newType :)
 
-
-mergeHeaderWithFunction :: Map String FunctionSignature -> [(TopLevelName, NonTypedExpr)] -> Either String [(String, Function)]
+-- |Combine les entêtes de fonction avec la fonction elle même
+mergeHeaderWithFunction :: Map String FunctionSignature -> [(TopLevelName, NonTypedExpr)] -> Either String [(Named Function)]
 mergeHeaderWithFunction typeMap ((functionName, expr):xs) =  
     case Map.lookup functionName typeMap of
-        Just t -> ((functionName, Function (Just t) expr) :) <$> mergeHeaderWithFunction (delete functionName typeMap) xs
-        Nothing -> ((functionName, Function Nothing expr) :) <$> mergeHeaderWithFunction typeMap xs
+        Just t -> ((Named functionName $ Function (Just t) expr) :) <$> mergeHeaderWithFunction (delete functionName typeMap) xs
+        Nothing -> ((Named functionName $ Function Nothing expr) :) <$> mergeHeaderWithFunction typeMap xs
 mergeHeaderWithFunction typeMap []
     | null typeMap = Right []
     | otherwise = Left $ "Missing top level function named " ++ show (keys typeMap)
     
+-- |Map une liste de TempModuleParser à un ParseOutput, ou une erreur
 createParseOutput :: [TempModuleParser] -> Either String ParseOutput
-createParseOutput xs = (\funcs -> ParseOutput funcs types) <$> mergeHeaderWithFunction headers (fmap (\(n, e) -> (n, transformToFixPoint n e)) functions)
+createParseOutput xs = (\funcs -> ParseOutput funcs types imp) <$> mergeHeaderWithFunction headers (fmap (\(n, e) -> (n, transformToFixPoint n e)) functions)
     where
+        imp = mapMaybe getImport xs 
         (functions, headers, types) = createModule xs
         
 fst3 f (a, b, c) = (f a, b, c)
 snd3 f (a, b, c) = (a, f b, c)
 trd3 f (a, b, c) = (a, b, f c)
-        
+
+getImport (Import str) = Just str
+getImport _ = Nothing        

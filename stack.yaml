@@ -2,6 +2,5 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-extra-deps:
-- llvm-general-pure-3.5.1.0
-resolver: lts-6.25
+extra-deps: []
+resolver: lts-7.13

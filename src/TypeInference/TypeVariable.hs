@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
-
+-- | S'occupe du nommage des variables de type
 module TypeInference.TypeVariable (TypeVariable(..), newTypeVariable, baseVariable) where
 import Control.Monad.State.Class
 import Text.PrettyPrint.ANSI.Leijen
 
+-- | Variable de type
 newtype TypeVariable =  TypeVariable String
     deriving (Show, Eq, Ord)
     
@@ -23,6 +24,7 @@ instance Enum TypeVariable where
     toEnum i = TypeVariable $ reverse $ toEnumImpl (i + 1)
     fromEnum (TypeVariable str) = (foldr (\x acc -> acc * 26 + x) 0 $ map letterIndex str)
 
+-- | Instancie une nouvelle variable avec un nom unique
 newTypeVariable :: MonadState TypeVariable m => m TypeVariable
 newTypeVariable = do
     v <- get
