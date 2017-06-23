@@ -1,5 +1,5 @@
 -- | Module qui s'occupe de faire l'inférence des types d'un module 
-module TypeInference(inferModule, getType, module T, runInference)  where
+module TypeInference(inferModule, getType, module T, runInference, inferModuleTypeEnv)  where
 import TypeInference.Base as T
 import TypeInference.Rules as T
 import TypeInference.TypeVariable as T
@@ -23,6 +23,9 @@ getType expr = runIdentity $ fmap (fmap (\(a,b,c) -> b)) $ runExceptT $ runInfer
 -- | Infere les types d'un module
 inferModule :: Monad m => Module [Named Function] -> Inference m (Module [Named (Expr Monotype)])
 inferModule = fmap (fmap snd) . mapModuleM inferModuleInner 
+
+inferModuleTypeEnv :: Monad m => Module [Named Function] -> Inference m (Module TypeEnvironment)
+inferModuleTypeEnv = fmap (fmap fst) . mapModuleM inferModuleInner 
 
 type InferInner = (TypeEnvironment, [Named (Expr Monotype)])
 

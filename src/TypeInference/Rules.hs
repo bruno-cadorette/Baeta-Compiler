@@ -49,32 +49,36 @@ instanciate (Polytype as monotype) = do
     nous l'exprimons comme ça: @fix (\product n -> if (n < 0) then 1 else n * (product (n - 1)))@.
     Il suffit simplement de simuler l'application pour avoir le type de la fonction
 -}
-infer :: Monad m => TypeEnvironment -> NonTypedExpr -> Inference m (Substitutions, Monotype, TypedExpr)
-infer env a@(Var name)        = do 
+
+ 
+
+inferLambdaExpr env a@(Var name) = do 
     t <- findType (getName name) env
     t' <- instanciate t
-    return (mempty, t', Var (t'<$ name))
-infer env a@(Apply expr1 expr2) = do
+    return (mempty, t', LC $ Var (t'<$ name))
+inferLambdaExpr env a@(Apply expr1 expr2) = do
     (s1, t1, e1') <- infer env expr1
     (s2, t2, e2' ) <- infer (substitute s1 env) expr2
     beta <- newVariable
     s3 <- unify (substitute s2 t1) (createArrow t2 beta)
-    return (s1 <> s2 <> s3, substitute s3 beta, Apply e1' e2')
+    return (s1 <> s2 <> s3, substitute s3 beta, LC $ Apply e1' e2')
 
-infer env a@(Lambda x expr) = do
+inferLambdaExpr env a@(Lambda x expr) = do
     beta <- newVariable
     let env' = insert (getName x) (toPolytype beta) env 
     (s1, t1, expr') <- infer env' expr
     let paramType = substitute s1 beta
-    return (s1, createArrow paramType t1, Lambda (paramType <$ x) expr')
-    
+    return (s1, createArrow paramType t1, LC $ Lambda (paramType <$ x) expr')
+
+infer :: Monad m => TypeEnvironment -> NonTypedExpr -> Inference m (Substitutions, Monotype, TypedExpr)
+infer env (LC a) = inferLambdaExpr env a
 infer env a@(Constant c ()) = 
     let t = constantType c
     in return (mempty, t, (Constant c t))
 infer env a@(Fix n expr) = do 
     a <- newVariable
     let fix = Arrow (identityType a) a
-    (s1, t1, (Lambda _ expr')) <- infer env $ Lambda (Named n ()) expr
+    (s1, t1, LC (Lambda _ expr')) <- infer env $ LC $ Lambda (Named n ()) expr
     b <- newVariable
     s2 <- unify (substitute s1 fix) (createArrow t1 b)
     return (s1 <> s2, substitute s2 b, Fix n expr')

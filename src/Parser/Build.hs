@@ -19,6 +19,7 @@ createModule = foldr buildModule mempty
         buildModule (ParseFunction (functionName, expr)) = fst3 ((functionName, expr) :)
         buildModule (TypeAnnotation (FunctionType functionName params)) = snd3 (insert functionName params)
         buildModule (ParseProductType newType) = trd3 (newType :)
+        buildModule _ = id
 
 -- |Combine les entêtes de fonction avec la fonction elle même
 mergeHeaderWithFunction :: Map String FunctionSignature -> [(TopLevelName, NonTypedExpr)] -> Either String [(Named Function)]

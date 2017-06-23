@@ -1,5 +1,5 @@
 {-|
-Ce module contient tout les combinateurs pour le parsing. La librairie Megaparsec utilise des combinateurs afin de construire d'autres 
+Ce module contient tout les combinateurs pour le parsing. La librairie Megaparsec utilise des combinateurs afin de construire d'autres
 combinateurs. Par exemple, si on veut parser une string suivi d'un espace, suivi de nomble, la fonction serait quelque chose comme celle ci
 @
 parser = some lowerChar >>= \l -> space >>= _ -> integer >>= \i -> return (l, i)
@@ -10,7 +10,7 @@ Ce module contient presque seulement des combinateurs, le parsing en tant que te
 
 -}
 module Parser.Base where
-    
+
 import Text.Megaparsec
 import Control.Applicative
 import LambdaCalculus
@@ -24,9 +24,9 @@ data ProductTypeParam = Argument String | Generic String deriving(Show, Eq)
 data ProductType = ProductType Constructor [ProductTypeParam] deriving(Show, Eq)
 
 -- |Le type d'une fonction
-data FunctionType = FunctionType String [ProductTypeParam] deriving(Show) 
+data FunctionType = FunctionType String [ProductTypeParam] deriving(Show)
 
--- |Résultat des combinateurs 
+-- |Résultat des combinateurs
 data TempModuleParser = ParseFunction (String, NonTypedExpr) | TypeAnnotation FunctionType | ParseProductType ProductType | Import String deriving (Show)
 
 -- |Helper
@@ -35,7 +35,7 @@ endWithSpace parser = do
     p <- parser
     space
     return p
-  
+
 -- |Combinateur pour la déclaration des types
 constructorString :: Parser String
 constructorString = liftA2 (:) upperChar $ many alphaNumChar
@@ -46,7 +46,7 @@ startWithLowerCase = liftA2 (:) lowerChar $ many alphaNumChar
 
 -- |Combinateur pour la déclaration des types
 parameterParser :: Parser ProductTypeParam
-parameterParser = Argument <$> constructorString <|> Generic <$> some alphaNumChar 
+parameterParser = Argument <$> constructorString <|> Generic <$> some alphaNumChar
 
 -- |Combinateur pour la déclaration des types
 productTypeParser :: Parser ProductType
@@ -55,13 +55,13 @@ productTypeParser = do
     space
     params <- many (endWithSpace parameterParser)
     return $ ProductType constructor params
-    
+
 -- |Combinateur pour la déclaration des types
 createTypeParser = do
     string "datatype"
     space
     productTypeParser
-    
+
 -- |Combinateur pour les fonctions
 functionParser :: String -> Parser (String, NonTypedExpr)
 functionParser functionName = do
@@ -69,14 +69,13 @@ functionParser functionName = do
     char '='
     space
     expr <- expressionParser
-    return $ (functionName, (currying param expr))
+    return (functionName, currying param expr)
 
 -- |Prend la liste des arguments de la fonction et les transformes en argument de lambda
 -- |currying ["a","b","c"] (Var "a") == λ a . λ b . λ c . a
 currying :: [String] -> NonTypedExpr ->  NonTypedExpr
-currying (x:xs) expr = Lambda (nonTypedVar x) (currying xs expr)
-currying []     expr = expr
-    
+currying xs expr = foldr (\x -> LC . Lambda (nonTypedVar x)) expr xs
+
 -- |Combinateur pour les lambdas "\[parametres] -> expr"
 lambdaParser :: Parser NonTypedExpr
 lambdaParser = do
@@ -87,12 +86,12 @@ lambdaParser = do
     space
     expr <- expressionParser
     return $ currying param expr
-    
-  
+
+
 -- |Combinateur pour les litéraux de string
 strParser :: Parser Literal
 strParser = LString <$> between (char '\"') (char '\"') (some (noneOf "\""))
-        
+
 -- |Combinateur pour les litéraux "string | int"
 literalParser :: Parser NonTypedExpr
 literalParser = fmap (\l -> Constant l ()) (LInt <$> integer <|> strParser)
@@ -109,17 +108,17 @@ ifParser = do
     return $ If a b c
 
 -- |Combinateur pour s'assurer que les applications de fonction se fassent dans un bon ordre, c'est à dire que "f g x == (f g) x"
-expressionParser :: Parser NonTypedExpr        
-expressionParser = do 
+expressionParser :: Parser NonTypedExpr
+expressionParser = do
     (x:xs) <- sepBy1 expParser space
-    return $ foldl (\a b -> Apply a b) x xs
-    
-    
+    return $ foldl (\x y -> LC $ Apply x y) x xs
+
+
 -- |Combinateur d'une fonction
-expParser = (between (char '(') (char ')') expressionParser) <|> lambdaParser <|> varParser <|> literalParser <|> ifParser
-    
+expParser = between (char '(') (char ')') expressionParser <|> lambdaParser <|> varParser <|> literalParser <|> ifParser
+
 -- |Combinateur d'une variable
-varParser = Var . nonTypedVar <$> startWithLowerCase
+varParser = LC . Var . nonTypedVar <$> startWithLowerCase
 
 -- |Combinateur d'une signature de fonction "fonction :: type"
 signatureParser :: String -> Parser FunctionType
@@ -128,24 +127,24 @@ signatureParser functionName = do
     space
     params <- sepBy1 parameterParser (space >> string "->" >> space)
     return $ FunctionType functionName params
-    
+
 debugParse = parse expParser ""
-        
+
 -- |Combinateur de l'import
 importParse = do
     char '@'
-    Import <$> some alphaNumChar
-        
+    Import <$> some asciiChar
+
 -- |Combinateur d'une fonction u bien d'une signature
 functionOrSignatureParser :: Parser TempModuleParser
 functionOrSignatureParser = do
     name <- startWithLowerCase
     space
     (TypeAnnotation <$> signatureParser name) <|> (ParseFunction <$> functionParser name)
-    
+
 -- |Point d'entré du parsing d'un fichier, est représenté par "type | fonction | import"
 moduleParser :: Parser TempModuleParser
 moduleParser =
-    (ParseProductType <$> createTypeParser) <|> 
+    (ParseProductType <$> createTypeParser) <|>
     functionOrSignatureParser <|>
     importParse

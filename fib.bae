@@ -4,4 +4,18 @@ fib n = #if (eq n 0) 0
     (#if (eq n 1) 1 
         (add (fib (sub n 1)) (fib (sub n 2))))
 
-main = fib 10
+a = \n -> add n n
+
+zero f x = x
+
+one f x = f x
+
+two f x = f (one f x)
+
+three f x = f (two f x)
+
+four f x = f (three f x)
+
+addPeano m n f x = m f (n f x)
+
+main = a 2

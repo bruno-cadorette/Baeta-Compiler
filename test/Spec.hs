@@ -17,16 +17,19 @@ main = do
 
 parseTest = describe "parse test" $ do
     it "id with type" $ 
-        moduleValue <$> runExcept (parseModule "id :: a -> a\nid x = x" "")  `shouldBe` Right [(Named "id" $ Function (Just [Generic "a",Generic "a"]) (Lambda (Named "x" ()) (Var $ Named "x" ())))]
+        moduleValue <$> runExcept (parseModule "id :: a -> a\nid x = x" "")  `shouldBe` Right [(Named "id" $ Function (Just [Generic "a",Generic "a"]) (LC $ Lambda (Named "x" ()) (LC $ Var $ Named "x" ())))]
     it "associativity" $
         runExcept (parseModule "a = f g x" "")  `shouldBe`  runExcept (parseModule "a = (f g) x" "")
+    it "space" $
+        runExcept (parseModule "a=f g x" "")  `shouldBe`  runExcept (parseModule "a = f g x" "")
+    
 
 typeTest = describe "type test" $ do
     it "id" $ 
-        getType (Lambda (Named "x" ()) (Var (Named "x" ()))) `shouldBe` 
+        getType (LC $ Lambda (Named "x" ()) (LC $ Var (Named "x" ()))) `shouldBe` 
             Right (Arrow (TVar (TypeVariable "a")) (TVar (TypeVariable "a")))
     it "apply int" $
-        getType (Lambda (Named "x" ()) (Apply (Var (Named "x" ())) (exprInt 7 ()))) `shouldBe` 
+        getType (LC $ Lambda (Named "x" ()) (LC $ Apply (LC $ Var (Named "x" ())) (exprInt 7 ()))) `shouldBe` 
         Right (((TConstant "Int") `Arrow` (TVar (TypeVariable "b"))) `Arrow` (TVar (TypeVariable "b")))
  
 

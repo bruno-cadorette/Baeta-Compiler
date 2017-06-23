@@ -14,7 +14,7 @@ newtype Func = Func (Literal -> Literal)
 -- |Litéraux
 data Literal = LInt Integer | LString String | Unit | LBool Bool | BuiltInFunc Func deriving (Show, Eq)
     
-
+{-
 -- |L'expression de base. Est polymorphique pour ajouter des valeurs tel que les closures ou bien les types
 data Expr a = 
     -- |Variable
@@ -31,6 +31,29 @@ data Expr a =
     | If (Expr a) (Expr a) (Expr a) 
     deriving (Show, Eq, Functor)
     
+   -}
+    
+hoist :: (m a -> n a) -> LambdaExpr m a -> LambdaExpr n a
+hoist f (Var a) = Var a
+hoist f (Apply a b) = Apply (f a) (f b)
+hoist f (Lambda a b) = Lambda a (f b)
+
+    
+data LambdaExpr m a = 
+    Var (Named a) | Apply (m a) (m a) | Lambda (Named a) (m a)
+    deriving (Show, Eq, Functor)
+    
+newtype LambdaCalculus a = LambdaCalculus (LambdaExpr LambdaCalculus a) deriving (Show, Eq, Functor)
+    
+data Expr a = 
+    LC (LambdaExpr Expr a) 
+    | Constant Literal a 
+    | Fix String (Expr a)
+    | If (Expr a) (Expr a) (Expr a)
+    deriving (Show, Eq, Functor)
+
+
+
 instance Show Func where
     show f = "Literal -> Literal"
     
@@ -41,18 +64,21 @@ nonTypedVar str = Named str ()
     
 exprInt = Constant . LInt
     
+    
 
+instance Pretty a => Pretty (Named a) where
+    pretty (Named a b) = text a <+> text ":" <+> parens (pretty b)
+    
+instance (Pretty (f a), Pretty a) => Pretty (LambdaExpr f a) where
+    pretty (Var var) = pretty var
+    pretty (Apply expr1 expr2) = parens (pretty expr1) <+> parens (pretty expr2)
+    pretty (Lambda var expr) = char '\\' <> pretty var <+> text "->" <+> parens (pretty expr)
 
-instance Pretty (Named a) where
-    pretty (Named a _) = text a
-
-instance Pretty (Expr a) where
-    pretty (Var var) = text $ getName var
-    pretty (Apply expr1 expr2) = pretty expr1 <+> pretty expr2
-    pretty (Lambda var expr) = char '\\' <+> pretty var <+> text "->" </> pretty expr
-    pretty (Constant l _) = pretty l
-    pretty (Fix n f) = pretty f
-    pretty (If c a b) = text "if " <> pretty c <> pretty a <> pretty b 
+instance Pretty a => Pretty (Expr a) where
+    pretty (LC lambda) = pretty lambda
+    pretty (Constant l b) = pretty l <+> text ":" <+> pretty b
+    pretty (Fix n f) = text ("FixPoint[" ++ n ++ "]") <+> parens (pretty f)
+    pretty (If c a b) = text "if " <+> parens (pretty c) <+> parens (pretty a) <+> parens (pretty b) 
     
 instance Pretty Literal where
     pretty (LInt n) = pretty n
@@ -63,14 +89,14 @@ instance Pretty Literal where
     
 -- |Vérifie si une expression est recursive
 isRecursive :: String -> Expr a -> Bool
-isRecursive n (Var x) = n == getName x
-isRecursive n (Apply x y) = isRecursive n x || isRecursive n y
-isRecursive n (Constant l _) = False
-isRecursive n (Fix _ expr) = isRecursive n expr
-isRecursive n (Lambda x expr)
+isRecursive n (LC (Var x)) = n == getName x
+isRecursive n (LC (Apply x y)) = isRecursive n x || isRecursive n y
+isRecursive n (LC (Lambda x expr))
     |n == getName x = False --Shadowing, ex f1 = (\f2 -> f2...)
     |otherwise = isRecursive n expr
 isRecursive n (If c a b) = isRecursive n c || isRecursive n a || isRecursive n b
+isRecursive n (Constant l _) = False
+isRecursive n (Fix _ expr) = isRecursive n expr
 
 -- |Transforme une expression en fix point si il y a lieu
 transformToFixPoint :: String -> NonTypedExpr -> NonTypedExpr

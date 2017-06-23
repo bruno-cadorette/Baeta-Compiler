@@ -24,10 +24,12 @@ data Monotype = TVar TypeVariable
     --Arrow pourrait être quelque chose comme TApp [(TConstant "->"), type1, type2]
     | Arrow Monotype Monotype deriving (Show, Eq, Ord)
     
+
+    
 instance Pretty Monotype where
     pretty (TVar t) = pretty t
     pretty (TConstant t) = text t
-    pretty (Arrow t1 t2) = pretty t1 </> text "->" </> pretty t2
+    pretty (Arrow t1 t2) = parens (pretty t1 <+> text "=>" <+> pretty t2)
     
 --getLambdaValue x expr = createArrow (getValue x) (getExprValue expr)
     

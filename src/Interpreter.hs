@@ -48,8 +48,8 @@ getVariableValue (Named n env) = do
                 
 -- | Evalue une expression
 eval :: ExprEval -> Evaluation ExprEnv
-eval (ExprEval (Apply expr1 expr2)) = applyToLambda expr1 expr2
-eval (ExprEval (Var a)) = do 
+eval (ExprEval (LC (Apply expr1 expr2))) = applyToLambda expr1 expr2
+eval (ExprEval (LC (Var a))) = do 
     var <- ExprEval <$> getVariableValue a
     eval var
 eval (ExprEval (If cond a b)) = do
@@ -61,7 +61,7 @@ eval (ExprEval a) = return a
 
 -- |Applique la beta reduction et les fonctions built in
 applyToLambda :: ExprEnv -> ExprEnv -> Evaluation ExprEnv
-applyToLambda (Lambda a expr) param = eval $ ExprEval (updateValue (getName a) param expr)
+applyToLambda (LC (Lambda a expr)) param = eval $ ExprEval (updateValue (getName a) param expr)
 applyToLambda (Fix _ expr) param = applyToLambda expr param
 applyToLambda (Constant (BuiltInFunc (Func f)) _) param = do
     (Constant p _) <- eval (ExprEval param)
