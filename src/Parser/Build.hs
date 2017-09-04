@@ -37,7 +37,7 @@ createParseOutput xs = (\funcs -> ParseOutput funcs types imp) <$> mergeHeaderWi
     where
         imp = mapMaybe getImport xs 
         (functions, headers, types) = createModule xs
-        
+
 fst3 f (a, b, c) = (f a, b, c)
 snd3 f (a, b, c) = (a, f b, c)
 trd3 f (a, b, c) = (a, b, f c)

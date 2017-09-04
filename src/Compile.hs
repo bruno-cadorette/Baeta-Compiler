@@ -4,6 +4,8 @@ import Parser
 import Closure
 import TypeInference
 import ModuleSystem
+import Control.Monad.State.Lazy
+import Control.Monad.Trans.Writer.Lazy
 import Control.Monad.Trans.Except
 import ExceptionHandling
 import Interpreter
@@ -15,19 +17,28 @@ fmap2 f = fmap (fmap f)
 fmap3 f = fmap (fmap2 f)
 
 
+getProgramAST :: Monad m => [(String, String)] -> WriterT String m (Either String [Named Function])
+getProgramAST = fmap2 joinModules . runExceptT . parsingStep
 
-getProgramAST = fmap joinModules . runExcept . parsingStep
-
-getProgramTypes files = fmap (pretty . joinModules) $ runExcept $ do 
+getProgramTypes ::
+  Monad m =>
+  [(String, String)] -> WriterT String m (Either String Doc)
+getProgramTypes files = fmap2 (pretty . joinModules) $ runExceptT $ do 
     m <- parsingStep files
     inferenceStep m
 
-getProgramClosures files =  runExcept $ do
+getProgramClosures ::
+  Monad m =>
+  [(String, String)]
+  -> WriterT
+       String m (Either String [Named (Expr (Environment Monotype))])
+getProgramClosures files =  runExceptT $ do
     m <- parsingStep files
     i <- inferenceStep m
     return $ joinModules $ fmap3 (fmap snd . addClosure) i
     
-getProgramOutput = fmap pretty . runIdentity . compile
+getProgramOutput ::Monad m => [(String, String)] -> WriterT String m (Either String Doc)
+getProgramOutput = fmap2 pretty . compile
     
 parsingStep :: Monad m => [(String, String)] -> ExceptT String m (Module [Named Function])
 parsingStep files = do
@@ -36,13 +47,12 @@ parsingStep files = do
  
 inferenceStep
   :: Monad m => Module [Named Function]
-     -> ExceptT String m (Module [Named (Expr Monotype)])
-inferenceStep = runInference . inferModule
+     -> ExceptT String (WriterT String m) (Module [Named (Expr Monotype)])
+inferenceStep m = evalStateT (inferModule m) baseVariable
 
 -- |Représente le flow de compilateur, du fichier texte au résultat final
-compile :: Monad m => [(String, String)] -> m (Either String ExprEnv)
+compile :: Monad m => [(String, String)] -> WriterT String m (Either String ExprEnv)
 compile files = runExceptT $ do 
     m <- parsingStep files
     i <- inferenceStep m
     evalProgram $ joinModules $ fmap3 addClosure i
-    

@@ -11,11 +11,12 @@ import Data.Function
 import TypeInference.TypeVariable
 import Control.Monad.Trans.Except
 import Control.Monad.State.Lazy
+import Control.Monad.Trans.Writer.Lazy
 import GHC.Exts
 import Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 --http://hackage.haskell.org/package/sized-vector-1.4.3.1/docs/Data-Vector-Sized.html
 
-type Inference m a = StateT TypeVariable (ExceptT String m) a
+type InferenceMonad m a = StateT TypeVariable (ExceptT String (WriterT String m)) a
 
 --TODO Ajouter TApp [(Int, Monotype)] ou bien TApp Monotype [Monotype], où le Int est le nombre de parametres. 
 -- | Un type pouvant être soit une variable, soit une constante, soit une fonction (arrow)
@@ -28,8 +29,8 @@ data Monotype = TVar TypeVariable
     
 instance Pretty Monotype where
     pretty (TVar t) = pretty t
-    pretty (TConstant t) = text t
-    pretty (Arrow t1 t2) = parens (pretty t1 <+> text "=>" <+> pretty t2)
+    pretty (TConstant t) = text $ show t
+    pretty (Arrow t1 t2) = parens (pretty t1 <+> text "->" <+> pretty t2)
     
 --getLambdaValue x expr = createArrow (getValue x) (getExprValue expr)
     
@@ -58,10 +59,11 @@ toPolytype mono = Polytype [] mono
 newtype TypeEnvironment = TypeEnvironment (Map.Map String Polytype) deriving (Show, Monoid)
 
 instance Pretty TypeEnvironment where
-    pretty (TypeEnvironment env) = vcat $ line <$> Map.toList env
+    pretty (TypeEnvironment env) = vcat $ typeLine <$> Map.toList env
         where 
-            line (name, t) = brackets (text name <+> text ":=" <+> pretty t)
+            typeLine (name, t) = brackets (text name <+> text ":=" <+> pretty t)
 
+emptyEnv :: TypeEnvironment
 emptyEnv = TypeEnvironment mempty
 
 instance IsList TypeEnvironment where
@@ -70,7 +72,7 @@ instance IsList TypeEnvironment where
   toList (TypeEnvironment env)  = Map.toList env
 
 -- | Trouve le type d'un environment avec une variable
-findType :: Monad m => String -> TypeEnvironment -> Inference m Polytype
+findType :: Monad m => String -> TypeEnvironment -> InferenceMonad m Polytype
 findType t e@(TypeEnvironment env) = 
     case Map.lookup t env of
         Just x -> return x
@@ -128,25 +130,33 @@ instance Subtitute TypeEnvironment where
 
 
 
-unifyWithSubstitutions :: Monad m => Substitutions -> Monotype -> Monotype -> Inference m Substitutions
+unifyWithSubstitutions :: Monad m => Substitutions -> Monotype -> Monotype -> InferenceMonad m Substitutions
 unifyWithSubstitutions subs = unify `on` (substitute subs)
 
 -- | Trouve toutes les subtitutions entre deux types
-unify :: Monad m => Monotype -> Monotype -> Inference m Substitutions
+unify :: Monad m => Monotype -> Monotype -> InferenceMonad m Substitutions
 unify (Arrow l r) (Arrow l' r') = do
     subs1 <- unify l l'
     subs2 <- unifyWithSubstitutions subs1 r r'
     return (subs1 <> subs2)
-unify (TVar a) b = unifyTypeVar a b
-unify b (TVar a) = unifyTypeVar a b
+unify (TVar a) b = lift $ unifyTypeVar a b
+unify b (TVar a) = lift $ unifyTypeVar a b
 
 unify (TConstant a) (TConstant b)
     |a == b = return mempty
     
 unify a b = lift $ throwE $ "Monotype error on unifying type " ++ (show a) ++ " and type " ++ (show b) 
 
-unifyTypeVar :: Monad m => TypeVariable -> Monotype -> Inference m Substitutions
-unifyTypeVar a t@(TVar b)
+unifyTypeVar' :: Monad m => TypeVariable -> Monotype -> InferenceMonad m Substitutions
+unifyTypeVar' a t@(TVar b)
    |a == b = return mempty
    |Set.member a $ freeVariables t = lift $ throwE $ "Infinite type " ++ show a 
-unifyTypeVar a b = return $ Substitutions (Map.singleton a b)
+unifyTypeVar' a b = return $ Substitutions (Map.singleton a b)
+
+--unifyTypeVar :: Monad m => TypeVariable -> Monotype -> InferenceMonad m Substitutions
+unifyTypeVar a t@(TVar b)
+   |a == b = return mempty
+   |Set.member a $ freeVariables t = throwE $ "Infinite type " ++ show a 
+unifyTypeVar a b = do
+    lift $ tell ("Unifying " ++ show (pretty a) ++ " with " ++ show (pretty b) ++ "\n")
+    return $ Substitutions (Map.singleton a b)

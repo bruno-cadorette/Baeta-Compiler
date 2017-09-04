@@ -71,6 +71,12 @@ functionParser functionName = do
     expr <- expressionParser
     return (functionName, currying param expr)
 
+namedFunctionParser :: Parser (String, NonTypedExpr)
+namedFunctionParser = do
+    name <- startWithLowerCase
+    space
+    functionParser name
+
 -- |Prend la liste des arguments de la fonction et les transformes en argument de lambda
 -- |currying ["a","b","c"] (Var "a") == λ a . λ b . λ c . a
 currying :: [String] -> NonTypedExpr ->  NonTypedExpr

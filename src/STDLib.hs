@@ -2,10 +2,7 @@
 -- | Librairie standard du langage, contient les fonctions de base d'Haskell pouvant se retrouver dans Baeta
 module STDLib where
 import LambdaCalculus
-import System.IO.Unsafe
-import Debug.Trace
 import Data.Map
-import Closure
 import TypeInference.Base
 import TypeInference.TypeVariable
 
@@ -16,10 +13,10 @@ newNamed a = Named a mempty
 mathHelper :: (Integer -> Integer -> Integer) -> Literal
 mathHelper op = func $ \(LInt a) -> func $ \(LInt b) -> LInt (op a b)
 
-mathType :: Monad m => Inference m Monotype
+mathType :: Monad m => InferenceMonad m Monotype
 mathType = biFunction "Int" "Int" "Int"
 
-biFunction :: Monad m => String -> String -> String -> Inference m Monotype
+biFunction :: Monad m => String -> String -> String -> InferenceMonad m Monotype
 biFunction a b c = return $ createArrow (TConstant a) (createArrow (TConstant b) (TConstant c))
 
 
@@ -34,14 +31,14 @@ mul = mathHelper (*)
 eqSTD = func $ \a -> func $ \b -> (LBool $ a == b )
 ltSTD = func $ \(LInt a) -> func $ \(LInt b) -> (LBool $ a < b )
 notSTD = func $ \(LBool a) -> LBool (not a)
-eqType, ltType, notType :: Monad m => Inference m Monotype
+eqType, ltType, notType :: Monad m => InferenceMonad m Monotype
 eqType = do
     a <- TVar <$> newTypeVariable
     return $ createArrow a (createArrow a (TConstant "Bool"))
     
 ltType = return $ createArrow (TConstant "Int") (createArrow (TConstant "Int") (TConstant "Bool"))
 notType = return $ createArrow (TConstant "Bool") (TConstant "Bool")
-stdLibBase :: (Monad m) => [(String, Literal, Inference m Monotype)]
+stdLibBase :: (Monad m) => [(String, Literal, InferenceMonad m Monotype)]
 stdLibBase = [
         ("add", add, mathType), 
         ("sub", sub, mathType), 
@@ -53,9 +50,9 @@ stdLibBase = [
     ]
  
 -- | Map un nom d'une fonction à son type
-stdLibType :: Monad m => Inference m (Map String Monotype)
-stdLibType = sequence $ fromList $ fmap (\(n, b, t) -> (n, t)) stdLibBase
+stdLibType :: Monad m => InferenceMonad m (Map String Monotype)
+stdLibType = sequence $ fromList $ fmap (\(n, _, t) -> (n, t)) stdLibBase
 
 -- | Map un nom d'une fonction à sa valeur
 stdLib :: Map String Literal
-stdLib = fromList $ fmap (\(n, b, t::Inference IO Monotype) -> (n, b)) stdLibBase
+stdLib = fromList $ fmap (\(n, b, t::InferenceMonad IO Monotype) -> (n, b)) stdLibBase

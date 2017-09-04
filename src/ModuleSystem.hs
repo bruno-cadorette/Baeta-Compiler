@@ -7,10 +7,8 @@ import Control.Monad.Trans.Except
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.List
-import Debug.Trace
 import Data.Foldable
 import Data.Graph
-import Control.Monad
 import System.Directory.Tree
 import ExceptionHandling
 import Control.Monad.IO.Class
@@ -66,7 +64,7 @@ mapModuleM f (Module ms) = Module <$> mapAccumRM insertResults mempty ms
 invertDependency :: [ParsedModule a] -> [(a, String, [String])]
 invertDependency xs = fmap (\(ParsedModule name _ value) -> (value, name, getChilds name)) xs
     where
-        toNode (ParsedModule name imp _) c = foldr (\n -> Map.insertWith (++) n [name]) c imp
+        toNode (ParsedModule name' imp _) c = foldr (\n -> Map.insertWith (++) n [name']) c imp
         childs= foldr toNode mempty xs
         getChilds n = fromMaybe [] $ Map.lookup n childs
        

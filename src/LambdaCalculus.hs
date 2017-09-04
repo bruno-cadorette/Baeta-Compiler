@@ -34,7 +34,7 @@ data Expr a =
    -}
     
 hoist :: (m a -> n a) -> LambdaExpr m a -> LambdaExpr n a
-hoist f (Var a) = Var a
+hoist _ (Var a) = Var a
 hoist f (Apply a b) = Apply (f a) (f b)
 hoist f (Lambda a b) = Lambda a (f b)
 
@@ -55,13 +55,15 @@ data Expr a =
 
 
 instance Show Func where
-    show f = "Literal -> Literal"
+    show _ = "Literal -> Literal"
     
 instance Eq Func where
-    a == b = False
+    _ == _ = False
     
+nonTypedVar :: String -> Named ()
 nonTypedVar str = Named str ()
     
+exprInt :: Integer -> a -> Expr a
 exprInt = Constant . LInt
     
     
@@ -95,7 +97,7 @@ isRecursive n (LC (Lambda x expr))
     |n == getName x = False --Shadowing, ex f1 = (\f2 -> f2...)
     |otherwise = isRecursive n expr
 isRecursive n (If c a b) = isRecursive n c || isRecursive n a || isRecursive n b
-isRecursive n (Constant l _) = False
+isRecursive _ (Constant _ _) = False
 isRecursive n (Fix _ expr) = isRecursive n expr
 
 -- |Transforme une expression en fix point si il y a lieu
